@@ -19,7 +19,8 @@ import time
 try: 
     from mmcv.cnn import ConvModule
 except:
-    os.system("mim install mmcv")
+    # os.system("mim install mmcv")
+    os.system("pip install mmcv==2.2.0 -f https://download.openmmlab.com/mmcv/dist/cu121/torch2.4/index.html")
 
 # download checkpoints
 def download_checkpoint(url, folder, filename):
@@ -99,6 +100,7 @@ def get_frames_from_video(video_input, video_state):
                 break
     except (OSError, TypeError, ValueError, KeyError, SyntaxError) as e:
         print("read_frame_source:{} error. {}\n".format(video_path, str(e)))
+
     image_size = (frames[0].shape[0],frames[0].shape[1]) 
     # initialize video_state
     video_state = {
@@ -278,13 +280,25 @@ def vos_tracking_video(video_state, interactive_state, mask_dropdown):
 
     #### shanggao code for mask save
     if interactive_state["mask_save"]:
-        if not os.path.exists('./result/mask/{}'.format(video_state["video_name"].split('.')[0])):
-            os.makedirs('./result/mask/{}'.format(video_state["video_name"].split('.')[0]))
-        i = 0
-        print("save mask")
-        for mask in video_state["masks"]:
-            np.save(os.path.join('./result/mask/{}'.format(video_state["video_name"].split('.')[0]), '{:05d}.npy'.format(i)), mask)
-            i+=1
+        video_base = video_state["video_name"].split('.')[0]
+        mask_dir = os.path.join('./result/mask', video_base)
+
+        os.makedirs(mask_dir, exist_ok=True)
+
+        print("💾 Saving masks to:", mask_dir)
+        for i, mask in enumerate(video_state["masks"]):
+            mask_path = os.path.join(mask_dir, f'mask_{i:05d}.npy')
+            np.save(mask_path, mask)
+            print(f"✅ Saved: {mask_path}")
+
+    # if interactive_state["mask_save"]:
+    #     if not os.path.exists('./result/mask/{}'.format(video_state["video_name"].split('.')[0])):
+    #         os.makedirs('./result/mask/{}'.format(video_state["video_name"].split('.')[0]))
+    #     i = 0
+    #     print("save mask")
+    #     for mask in video_state["masks"]:
+    #         np.save(os.path.join('./result/mask/{}'.format(video_state["video_name"].split('.')[0]), '{:05d}.npy'.format(i)), mask)
+    #         i+=1
         # save_mask(video_state["masks"], video_state["video_name"])
     #### shanggao code for mask save
     return video_output, video_state, interactive_state, operation_log
@@ -347,6 +361,7 @@ def generate_video_from_frames(frames, output_path, fps=30):
     frames = torch.from_numpy(np.asarray(frames))
     if not os.path.exists(os.path.dirname(output_path)):
         os.makedirs(os.path.dirname(output_path))
+    fps = int(fps)
     torchvision.io.write_video(output_path, frames, fps=fps, video_codec="libx264")
     return output_path
 
@@ -373,12 +388,11 @@ e2fgvi_checkpoint = "E2FGVI-HQ-CVPR22.pth"
 e2fgvi_checkpoint_id = "10wGdKSUOie0XmCr8SQ2A2FeDe-mfn5w3"
 
 
-folder ="./checkpoints"
+folder ="../EyeTrackingSam/model"
 SAM_checkpoint = download_checkpoint(sam_checkpoint_url, folder, sam_checkpoint)
 xmem_checkpoint = download_checkpoint(xmem_checkpoint_url, folder, xmem_checkpoint)
 e2fgvi_checkpoint = download_checkpoint_from_google_drive(e2fgvi_checkpoint_id, folder, e2fgvi_checkpoint)
 args.port = 12212
-args.device = "cuda:3"
 # args.mask_save = True
 
 # initialize sam, xmem, e2fgvi models
